@@ -25,11 +25,10 @@
 
                     <div class="form__group">
                         <label class="form__header">日付</label>
-                        <div class="form__input-group form__input-group--date-box">
-                            <!-- inputからspanタグに変更し、枠線を無くします -->
-                            <span class="form__text-date form__text-date--year">{{ $data['year'] }}</span>
-                            <span class="form__text-date form__text-date--md">{{ $data['date_md'] }}</span>
-                            <input type="hidden" name="new_date" value="{{ $data['date'] }}">
+                        <div class="form__input-group">
+                            {{-- 日付は表示のみ（修正不可）。名前欄と同様に枠線（border）を外す --}}
+                            <input class="form__input form__input--date" type="text" value="{{ $data['year'] }}" readonly>
+                            <input class="form__input form__input--date" type="text" name="new_date" value="{{ $data['date_md'] }}" readonly>
                         </div>
                     </div>
 
@@ -55,13 +54,11 @@
                         <div class="form__group">
                             <label class="form__header">{{ $index === 0 ? '休憩' : '休憩' . ($index + 1) }}</label>
                             <div class="form__input-group">
-                                <input class="form__input" type="text" name="new_break_in[{{ $index }}]" 
-                                    value="{{ $break['break_in'] ? \Carbon\Carbon::parse($break['break_in'])->format('H:i') : '' }}">
-                                <p>〜</p>  
-                                <input class="form__input" type="text" name="new_break_out[{{ $index }}]" 
-                                    value="{{ $break['break_out'] ? \Carbon\Carbon::parse($break['break_out'])->format('H:i') : '' }}">
+                                <input class="form__input" type="text" name="new_break_in[{{ $index }}]" value="{{ $break['break_in'] }}">
+                                <p>〜</p>
+                                <input class="form__input" type="text" name="new_break_out[{{ $index }}]" value="{{ $break['break_out'] }}">
                             </div>
-                        </div> {{-- 💡インデントを綺麗に揃え、余分な閉じタグを綺麗さっぱり無くしました --}}
+                        </div>
                         <div class="error-message">
                             <div></div>
                             <div class="error-message__item">
@@ -118,14 +115,13 @@
                         </div>
                     </div>
 
-<div class="form__group">
-    <label class="form__header">日付</label>
-    <div class="form__input-group form__input-group--date-box">
-        <!-- 先ほど作成した枠なしのテキスト表示（2026年 9月21日）に差し替えます -->
-        <span class="form__text-date form__text-date--year">{{ $data['year'] }}</span>
-        <span class="form__text-date form__text-date--md">{{ $data['date_md'] }}</span>
-    </div>
-</div>
+                    <div class="form__group">
+                        <label class="form__header">日付</label>
+                        <div class="form__input-group">
+                            <input class="form__input readonly" type="text" value="{{ $data['year'] }}" readonly>
+                            <input class="form__input readonly" type="text" value="{{ $data['date_md'] }}" readonly>
+                        </div>
+                    </div>
 
                     <div class="form__group">
                         <label class="form__header">出勤・退勤</label>
@@ -142,10 +138,10 @@
                             <label class="form__header">{{ $index === 0 ? '休憩' : '休憩' . ($index + 1) }}</label>
                             <div class="form__input-group">
                                 <input class="form__input readonly" type="text" name="new_break_in[]"
-                                    value="{{ $break['break_in'] ? \Carbon\Carbon::parse($break['break_in'])->format('H:i') : '' }}" readonly>
+                                    value="{{ $break['break_in'] }}" readonly>
                                 <p>〜</p>
                                 <input class="form__input readonly" type="text" name="new_break_out[]"
-                                    value="{{ $break['break_out'] ? \Carbon\Carbon::parse($break['break_out'])->format('H:i') : '' }}" readonly>
+                                    value="{{ $break['break_out'] }}" readonly>
                             </div>
                         </div>
                     @endforeach

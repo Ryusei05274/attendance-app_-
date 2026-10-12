@@ -17,13 +17,13 @@
             <a class="header__logo" href="/">
                 <img class="header__logo--img" src="{{ asset('images/logo.svg') }}" alt="logo">
             </a>
-            @if(Auth::check() && Auth::user()->admin_status)
+            @if(Auth::check() && Auth::user()->role === 'admin')
             <form action="/admin/logout" method="post">
                 @csrf
                 <nav class="inner__group">
                     <a class="inner__group--item" href="/admin/attendance/list">勤怠一覧</a>
                     <a class="inner__group--item" href="/admin/staff/list">スタッフ一覧</a>
-                    <a class="inner__group--item" href="/stamp_correction_request/list">申請一覧</a>
+                    <a class="inner__group--item" href="{{ route('attendance_correction.list') }}">申請一覧</a>
                     <button class="inner__group--item logout-button">
                         ログアウト
                     </button>

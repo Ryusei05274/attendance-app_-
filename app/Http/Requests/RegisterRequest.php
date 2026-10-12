@@ -8,6 +8,7 @@ class RegisterRequest extends FormRequest
 {
     /**
      * リクエストの実行を許可するかどうか（trueに変更します）
+     * @return bool 判定結果。
      */
     public function authorize(): bool
     {
@@ -16,6 +17,7 @@ class RegisterRequest extends FormRequest
 
     /**
      * バリデーションルール (FN002)
+     * @return array 処理結果。
      */
     public function rules(): array
     {
@@ -28,6 +30,7 @@ class RegisterRequest extends FormRequest
 
     /**
      * カスタムエラーメッセージ (FN003)
+     * @return array 処理結果。
      */
     public function messages(): array
     {

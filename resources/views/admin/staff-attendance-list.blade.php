@@ -54,16 +54,15 @@
             </td>
             <td class="table__description">
                 @if (!empty($attendanceRecords['id']))
-                <a class="table__item--detail-link" href="{{ url('/attendance/' . $attendanceRecords['id']) }}">詳細</a>
+                <a class="table__item--detail-link" href="{{ route('admin.attendance.detail', $attendanceRecords['id']) }}">詳細</a>
                 @endif
             </td>
         </tr>
         @endforeach
     </table>
     <div class="csv-button">
-        <form action="/export" method="post">
+        <form action="{{ route('admin.attendance.staff.csv', $user->id) }}" method="post">
         @csrf
-            <input type="hidden" name="user_id" value="{{ $user->id }}">
             <input type="hidden" name="year_month" value="{{ $date->format('Y-m') }}">
             <input class="csv-button__submit" type="submit" value="CSV出力">
         </form>

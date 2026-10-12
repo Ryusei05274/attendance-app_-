@@ -57,7 +57,7 @@
                 <p class="table__description--item">{{ $attendance->total_time ? Carbon\Carbon::parse($attendance->total_time)->format('G:i') : '' }}</p>
             </td>
             <td class="table__description">
-                <a class="table__item--detail-link" href="{{ url('/attendance/' . $attendance['id']) }}">詳細</a>
+                <a class="table__item--detail-link" href="{{ route('admin.attendance.detail', $attendance['id']) }}">詳細</a>
             </td>
         </tr>
         @endif

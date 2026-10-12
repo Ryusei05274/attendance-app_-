@@ -9,14 +9,17 @@ class AttendanceCorrectionRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
+     * @return bool 判定結果。
      */
     public function authorize(): bool
     {
         return true; 
     }
 
-  /**
-     * 💡 【タスク5】FN028: 修正申請のバリデーションルール定義
+    /**
+     * Define the correction request validation rules.
+     *
+     * @return array<string, mixed> Validation rules keyed by input name.
      */
     public function rules(): array
     {
@@ -77,7 +80,9 @@ class AttendanceCorrectionRequest extends FormRequest
     }
 
     /**
-     * 💡 【タスク6】FN029: 指定文言どおりのエラーメッセージ設定
+     * Return the user-facing validation messages.
+     *
+     * @return array<string, string> Messages keyed by validation rule.
      */
     public function messages(): array
     {

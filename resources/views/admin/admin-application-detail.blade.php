@@ -9,7 +9,7 @@
     <div class="detail__header">
         <h1 class="content__header--item">勤怠詳細</h1>
     </div>
-    <form class="applied-form" action="{{ url('/stamp_correction_request/approve/' . $application['id']) }}" method="post">
+    <form class="applied-form" action="{{ route('admin.correction.approve.store', $application->id) }}" method="post">
         @csrf
         <div class="applied-form__content">
             <div class="applied-form__group">

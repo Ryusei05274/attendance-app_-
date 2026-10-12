@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BreakLog extends Model
 {
@@ -15,10 +16,9 @@ class BreakLog extends Model
         'break_out',
     ];
 
-    /**
-     * リレーション：所属する勤怠データ (親)
+    /** @return BelongsTo<Attendance, $this> The attendance that owns this break.
      */
-    public function attendance()
+    public function attendance(): BelongsTo
     {
         return $this->belongsTo(Attendance::class);
     }

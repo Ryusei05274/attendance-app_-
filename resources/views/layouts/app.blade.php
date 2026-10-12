@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -14,38 +14,27 @@
 <body>
     <header class="header">
         <div class="header__inner">
-           <a class="header__logo" href="/">
+            <a class="header__logo" href="/">
                 <img class="header__logo--img" src="{{ asset('images/logo.svg') }}" alt="logo">
             </a>
             @if(Auth::check())
-                @if(strtolower(Auth::user()->role) === 'admin')
-                <!-- 👑 管理者ログイン時の右上メニュー -->
-                <!-- 💡CSSが正常に当たるよう、一般用とフォーム・ナビゲーションの階層を完全に統一しました -->
-                <form action="/admin/logout" method="post">
-                    @csrf
-                    <nav class="inner__group">
-                        <a class="inner__group--item" href="/admin/attendance/list">勤怠一覧</a>
-                        <a class="inner__group--item" href="/admin/staff/list">スタッフ一覧</a>
-                        <a class="inner__group--item" href="/attendance_correction_request/list">申請一覧</a>
-                        <button class="inner__group--item logout-button" type="submit">
-                            ログアウト
-                        </button>
-                    </nav>
-                </form>
-                @else
-                <!-- 👤 一般ユーザーログイン時の右上メニュー -->
-                <form action="/logout" method="post">
-                    @csrf
-                    <nav class="inner__group">
-                        <a class="inner__group--item" href="/attendance">勤怠</a>
+            <form action="/logout" method="post">
+                @csrf
+                <nav class="inner__group">
+                    @if(Auth::user()->role === 'admin')
+                    <a class="inner__group--item" href="{{ route('admin.attendance.list') }}">勤怠一覧</a>
+                    <a class="inner__group--item" href="{{ route('admin.staff.list') }}">スタッフ一覧</a>
+                    @else
+                    <a class="inner__group--item" href="/attendance">勤怠</a>
                         <a class="inner__group--item" href="/attendance/list">勤怠一覧</a>
-                        <a class="inner__group--item" href="/attendance_correction_request/list">申請一覧</a>
-                        <button class="inner__group--item logout-button" type="submit">
-                            ログアウト
-                        </button>
-                    </nav>
-                </form>
-                @endif
+                        <a class="inner__group--item" href="/attendance/report">勤怠レポート</a>
+                    @endif
+                    <a class="inner__group--item" href="{{ route('attendance_correction.list') }}">申請</a>
+                    <button class="inner__group--item logout-button">
+                        ログアウト
+                    </button>
+                </nav>
+            </form>
             @endif
         </div>
     </header>
@@ -54,4 +43,3 @@
     </main>
 </body>
 </html>
-<

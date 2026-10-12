@@ -2,169 +2,228 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Attendance;
-use App\Models\BreakLog;
-use App\Models\AttendanceCorrection; 
+use App\Models\AttendanceCorrection;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\View\View;
 
 class AttendanceCorrectionController extends Controller
 {
-   /**
-     * 💡 【タスク2】FN023: 勤怠一覧画面の表示処理
+    /** List the authenticated user's correction requests, or all requests for an administrator.
+     * @return View|RedirectResponse 申請一覧、または未認証ユーザーの認証案内。
      */
-    public function index(Request $request)
+    public function index(): View|RedirectResponse
     {
-        $user = Auth::user();
-
-if ($user && $user->role === 'admin') {
-            
-            // データベースからすべての申請を取得（ユーザー情報も同時に読み込み）
-            $allCorrections = AttendanceCorrection::with('user')->latest()->get();
-
-            // Blade側がループして判定している「$applications」のデータ構造を組み立てます
-            $applications = $allCorrections->map(function ($correction) {
-                
-                // statusの値（0や1）を、Bladeが40行目で判定している日本語のステータス文字に変換
-                $approvalStatus = $correction->status === 0 ? '承認待ち' : '承認済み';
-
-                return (object)[
-                    'id'              => $correction->id,
-                    'user'            => $correction->user,       // 氏名表示用
-                    'date'            => $correction->date,       // 対象日時
-                    'comment'         => $correction->comment,    // 申請理由
-                    'created_at'      => $correction->created_at, // 申請日
-                    'approval_status' => $approvalStatus,         // Bladeの「$application->approval_status」と結線
-                ];
-            });
-
-            // 👑 管理者用のBladeに、Bladeが探している変数名「applications」で渡します
-            return view('admin.admin-application-list', [
-                'applications' => $applications,
-            ]);
+        $user = auth()->user();
+        if ($user->role !== 'admin' && $user instanceof MustVerifyEmail && !$user->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice');
         }
 
-        // 【FN024用：日付オブジェクトの用意】※タスク3で詳細を解説します
-        $dateParam = $request->query('date');
-        $date = $dateParam ? Carbon::parse($dateParam) : Carbon::now();
-        $previousMonth = $date->copy()->subMonth()->format('Y-m');
-        $nextMonth = $date->copy()->addMonth()->format('Y-m');
-
-        // 1. ログインユーザーの、指定された年月に合致する勤怠レコードをすべて取得
-        // 💡一覧取得のパフォーマンスを高める「Eager Loading(with)」はタスク10でさらに強化します
-        $attendanceRecords = Attendance::where('user_id', $user->id)
-            ->whereYear('date', $date->year)
-            ->whereMonth('date', $date->month)
-            ->orderBy('date', 'asc')
+        $corrections = AttendanceCorrection::with(['user', 'attendance'])
+            ->when($user->role !== 'admin', fn ($query) => $query->where('user_id', $user->id))
+            ->latest()
             ->get();
 
-        // 2. 【FN023】UIと同じ構成になるようにデータをループ処理で綺麗に整形
-        $formattedAttendanceRecords = $attendanceRecords->map(function ($record) {
-            
-            // 休憩レコードから合計休憩時間を算出
-            $totalBreakSeconds = 0;
-            // 💡実態のリレーションメソッド名（breakLogs）に合わせてループを回します
-            foreach ($record->breakLogs as $breakLog) {
-                if ($breakLog->break_in && $breakLog->break_out) {
-                    $totalBreakSeconds += Carbon::parse($breakLog->break_in)->diffInSeconds(Carbon::parse($breakLog->break_out));
-                }
-            }
+        if ($user->role === 'admin') {
+            $applications = $corrections->each(function ($correction) {
+                $correction->approval_status = (int) $correction->status === 0 ? '承認待ち' : '承認済み';
+                $correction->application_date = $correction->created_at?->format('Y/m/d');
+                $correction->AttendanceRecord = $correction->attendance;
+                $correction->User = $correction->user;
+            });
 
-            // 出退勤データが存在する場合のみ、時間を整形（ない場合は要件通り空文字にする）
-            $clockIn = $record->clock_in ? Carbon::parse($record->clock_in)->format('H:i') : '';
-            $clockOut = $record->clock_out ? Carbon::parse($record->clock_out)->format('H:i') : '';
+            return view('admin.admin-application-list', compact('applications'));
+        }
 
-            // 休憩時間のフォーマット（1分以上の場合のみ H:i 形式に、ないフィールドは空白）
-            $totalBreakTime = '';
-            if ($totalBreakSeconds > 0) {
-                $hours = floor($totalBreakSeconds / 3600);
-                $minutes = floor(($totalBreakSeconds / 60) % 60);
-                $totalBreakTime = sprintf('%02d:%02d', $hours, $minutes);
-            }
+        $formattedApplications = $corrections->map(fn ($correction) => [
+            'id' => $correction->id,
+            'attendance_id' => $correction->attendance_id,
+            'date' => Carbon::parse($correction->attendance->date)->format('Y/m/d'),
+            'comment' => $correction->comment,
+            'application_date' => $correction->created_at?->format('Y/m/d'),
+            'approval_status' => (int) $correction->status === 0 ? '承認待ち' : '承認済み',
+        ]);
 
-            // 稼働合計時間（合計時間 ＝ 退勤 － 出勤 － 休憩）
-            $totalTime = '';
-            if ($record->clock_in && $record->clock_out) {
-                $workSeconds = Carbon::parse($record->clock_in)->diffInSeconds(Carbon::parse($record->clock_out));
-                $actualWorkSeconds = $workSeconds - $totalBreakSeconds;
-                if ($actualWorkSeconds > 0) {
-                    $wHours = floor($actualWorkSeconds / 3600);
-                    $wMinutes = floor(($actualWorkSeconds / 60) % 60);
-                    $totalTime = sprintf('%02d:%02d', $wHours, $wMinutes);
-                }
-            }
+        return view('user.user-application-list', compact('formattedApplications', 'user'));
+    }
 
-            return [
-                'id'               => $record->id,
-                'date'             => Carbon::parse($record->date)->isoFormat('MM/DD(ddd)'), // UIに合わせた日付表示
-                'clock_in'         => $clockIn,
-                'clock_out'        => $clockOut,
-                'total_break_time' => $totalBreakTime, // 休憩がないフィールドは空白
-                'total_time'       => $totalTime,       // 勤怠情報がない、または打刻途中は空白
-            ];
-        });
+    /** Show an attendance record and any pending proposed edits.
+     * @param int $attendance_id 対象レコードの識別子。
+     * @return View 表示する画面とそのデータ。
+     */
+    public function show(int $attendance_id): View
+    {
+        $user = auth()->user();
+        abort_if($user->role === 'admin', 404);
 
-        // 3. 整形したデータを勤怠一覧Blade（user-attendance-list.blade.php）に渡して表示
-        return view('user.user-attendance-list', [
-            'user'                       => $user,
-            'formattedAttendanceRecords' => $formattedAttendanceRecords,
-            'date'                       => $date,
-            'previousMonth'              => $previousMonth,
-            'nextMonth'                  => $nextMonth,
+        $attendance = Attendance::with('breakLogs')
+            ->where('user_id', $user->id)
+            ->findOrFail($attendance_id);
+        $pending = AttendanceCorrection::where('attendance_id', $attendance->id)
+            ->where('user_id', $user->id)
+            ->where('status', 0)
+            ->latest()
+            ->first();
+        $date = Carbon::parse($attendance->date);
+        $breaks = $pending && $pending->new_breaks !== null
+            ? collect($pending->new_breaks)
+            : $attendance->breakLogs->map(fn ($break) => ['break_in' => $break->break_in, 'break_out' => $break->break_out]);
+
+        $data = [
+            'id' => $attendance->id,
+            'date' => $attendance->date,
+            'year' => $date->format('Y年'),
+            'date_md' => $date->format('n月j日'),
+            'clock_in' => ($pending ? $pending->new_clock_in : $attendance->clock_in)
+                ? Carbon::parse($pending ? $pending->new_clock_in : $attendance->clock_in)->format('H:i') : '',
+            'clock_out' => ($pending ? $pending->new_clock_out : $attendance->clock_out)
+                ? Carbon::parse($pending ? $pending->new_clock_out : $attendance->clock_out)->format('H:i') : '',
+            'comment' => $pending ? $pending->comment : ($attendance->comment ?? ''),
+            'application' => $pending,
+            'breaks' => $breaks->map(fn ($break) => [
+                'break_in' => isset($break['break_in']) ? Carbon::parse($break['break_in'])->format('H:i') : '',
+                'break_out' => !empty($break['break_out']) ? Carbon::parse($break['break_out'])->format('H:i') : '',
+            ])->values()->all(),
+        ];
+
+        return view('user.user-detail', [
+            'user' => $user,
+            'data' => $data,
+            'formattedDate' => $date->locale('ja')->isoFormat('YYYY年MM月DD日(ddd)'),
         ]);
     }
 
-      /**
-     * 💡 【タスク4】FN025 / FN026 / FN027: 勤怠詳細画面の表示処理 (GET)
+    /** Validate and submit an attendance correction request.
+     * @param Request $request 入力と認証情報を含むリクエスト。
+     * @param int $attendance_id 対象レコードの識別子。
+     * @return RedirectResponse 処理後の遷移先。
      */
-    public function show($attendance_id)
+    public function store(Request $request, int $attendance_id): RedirectResponse
     {
-        $user = Auth::user();
+        $user = auth()->user();
+        abort_if($user->role === 'admin', 404);
+        $attendance = Attendance::where('user_id', $user->id)->findOrFail($attendance_id);
 
-        // 1. 指定されたIDの勤怠レコードを、ログイン中のユーザーのデータから厳格に取得 (FN025)
-        $attendance = Attendance::where('id', $attendance_id)
-            ->where('user_id', $user->id)
-            ->firstOrFail();
+        if (AttendanceCorrection::where('attendance_id', $attendance->id)->where('user_id', $user->id)->where('status', 0)->exists()) {
+            return back()->withErrors(['attendance' => '承認待ちの申請があるため、修正できません。']);
+        }
 
-        // 2. この勤怠に対して、現在「承認待ち(status=0)」の修正申請データがあるかデータベースを確認 (FN027)
-        $correction = \App\Models\AttendanceCorrection::where('attendance_id', $attendance->id)
-            ->where('user_id', $user->id)
-            ->where('status', 0) // 0: 承認待ち
-            ->first();
-
-        // 3. 休憩データをすべて取得
-        $breakLogs = \App\Models\BreakLog::where('attendance_id', $attendance->id)
-            ->orderBy('break_in', 'asc')
-            ->get();
-
-        // 4. 【FN026】UIに表示するための日付（年、月日）をそれぞれ整形
-        $attendanceDate = \Carbon\Carbon::parse($attendance->date);
-        $yearFormatted  = $attendanceDate->isoFormat('YYYY年');
-        $dateFormatted  = $attendanceDate->isoFormat('M月D日');
-        $formattedDate  = $attendanceDate->isoFormat('YYYY年MM月DD日(ddd)');
-
-        // 5. 【FN026】画面の連想配列の形にデータをすべて組み立てます
-        // 💡承認待ち申請（$correction）がある場合は、申請中の「修正後の時間や備考」を表示させます (FN027)
-        $data = [
-            'id'          => $attendance->id,
-            'date'        => $attendance->date,
-            'year'        => $yearFormatted,  // 「2026年」など
-            'date_md'     => $dateFormatted,  // 「9月21日」など
-            'clock_in'    => $correction ? \Carbon\Carbon::parse($correction->new_clock_in)->format('H:i') : ($attendance->clock_in ? \Carbon\Carbon::parse($attendance->clock_in)->format('H:i') : ''),
-            'clock_out'   => $correction ? \Carbon\Carbon::parse($correction->new_clock_out)->format('H:i') : ($attendance->clock_out ? \Carbon\Carbon::parse($attendance->clock_out)->format('H:i') : ''),
-            'comment'     => $correction ? $correction->comment : ($attendance->comment ?? ''),
-            'application' => $correction ? $correction : null, // 💡これがBlade側での承認待ちモードの判定に使われます
-            'breaks'      => $breakLogs,
-        ];
-
-        // 6. 組み立てた $data を一般ユーザー用の詳細Blade（user-detail.blade.php）に渡して表示
-        return view('user.user-detail', [ 
-            'user'          => $user,         // FN026項目1: 自分の氏名表示用
-            'data'          => $data,         // 項目2〜4: 紐づく日付・出退勤・休憩データ
-            'formattedDate' => $formattedDate,
+        $validated = $request->validate([
+            'new_clock_in' => 'required|date_format:H:i',
+            'new_clock_out' => 'required|date_format:H:i',
+            'new_break_in' => 'array',
+            'new_break_in.*' => 'nullable|date_format:H:i',
+            'new_break_out' => 'array',
+            'new_break_out.*' => 'nullable|date_format:H:i',
+            'comment' => 'required|string|max:255',
+        ], [
+            'new_clock_in.required' => '出勤時間を入力してください',
+            'new_clock_out.required' => '退勤時間を入力してください',
+            'comment.required' => '備考を記入してください',
         ]);
+
+        $in = Carbon::createFromFormat('H:i', $validated['new_clock_in']);
+        $out = Carbon::createFromFormat('H:i', $validated['new_clock_out']);
+        if ($out->lte($in)) {
+            return back()->withErrors(['new_clock_out' => '出勤時間もしくは退勤時間が不適切な値です'])->withInput();
+        }
+
+        $breakError = null;
+        $breaks = collect($validated['new_break_in'] ?? [])->map(function (?string $breakIn, int $index) use ($validated, $in, $out, &$breakError): ?array {
+            $breakOut = $validated['new_break_out'][$index] ?? null;
+            if (!$breakIn && !$breakOut) {
+                return null;
+            }
+            if (!$breakIn || !$breakOut) {
+                $breakError = ["new_break_in.$index" => '休憩時間が不適切な値です'];
+                return null;
+            }
+            $breakStart = Carbon::createFromFormat('H:i', $breakIn);
+            $breakEnd = Carbon::createFromFormat('H:i', $breakOut);
+            if ($breakEnd->gt($out)) {
+                $breakError = ["new_break_out.$index" => '休憩時間もしくは退勤時間が不適切な値です'];
+                return null;
+            }
+            if ($breakStart->lt($in) || $breakEnd->lte($breakStart)) {
+                $breakError = ["new_break_in.$index" => '休憩時間が不適切な値です'];
+                return null;
+            }
+            return ['break_in' => $breakIn, 'break_out' => $breakOut];
+        })->filter()->sortBy('break_in')->values();
+        if ($breakError !== null) {
+            return back()->withErrors($breakError)->withInput();
+        }
+
+        $overlap = $breaks->sliding(2)->first(function ($pair): bool {
+            $pair = $pair->values();
+            return $pair[1]['break_in'] < $pair[0]['break_out'];
+        });
+        if ($overlap !== null) {
+            return back()->withErrors(['new_break_in' => '休憩時間が不適切な値です'])->withInput();
+        }
+
+        AttendanceCorrection::create([
+            'attendance_id' => $attendance->id,
+            'user_id' => $user->id,
+            'original_date' => $attendance->date,
+            'new_clock_in' => $validated['new_clock_in'],
+            'new_clock_out' => $validated['new_clock_out'],
+            'new_breaks' => $breaks->all(),
+            'comment' => $validated['comment'],
+            'status' => 0,
+        ]);
+
+        return redirect()->route('attendance.detail', $attendance->id)->with('success', '修正申請を提出しました。');
+    }
+
+    /** Prepare a correction request for its approval detail page.
+     * @param int $attendance_correct_request_id 対象レコードの識別子。
+     * @return View 表示する画面とそのデータ。
+     */
+    public function showApprove(int $attendance_correct_request_id): View
+    {
+        $correction = AttendanceCorrection::with(['user', 'attendance'])->findOrFail($attendance_correct_request_id);
+        $correction->approval_status = (int) $correction->status === 0 ? '承認待ち' : '承認済み';
+        $correction->new_date = Carbon::parse($correction->attendance->date);
+        $correction->new_clock_in = Carbon::parse($correction->new_clock_in)->format('H:i');
+        $correction->new_clock_out = Carbon::parse($correction->new_clock_out)->format('H:i');
+        $correction->proposalBreaks = collect($correction->new_breaks ?? [])->map(fn ($break) => (object) $break);
+
+        return view('admin.admin-application-detail', [
+            'application' => $correction,
+            'user' => $correction->user,
+        ]);
+    }
+
+    /** Atomically approve a correction and apply its proposed values.
+     * @param int $attendance_correct_request_id 対象レコードの識別子。
+     * @return RedirectResponse 処理後の遷移先。
+     */
+    public function approve(int $attendance_correct_request_id): RedirectResponse
+    {
+        $correction = AttendanceCorrection::with('attendance')->lockForUpdate()->findOrFail($attendance_correct_request_id);
+        if ((int) $correction->status !== 0) {
+            return redirect()->route('attendance_correction.list')->with('success', 'この申請はすでに承認済みです。');
+        }
+
+        DB::transaction(function () use ($correction) {
+            $attendance = Attendance::lockForUpdate()->findOrFail($correction->attendance_id);
+            $attendance->update([
+                'clock_in' => $correction->new_clock_in,
+                'clock_out' => $correction->new_clock_out,
+                'comment' => $correction->comment,
+            ]);
+            $attendance->breakLogs()->delete();
+            collect($correction->new_breaks ?? [])->each(
+                fn (array $break): mixed => $attendance->breakLogs()->create($break)
+            );
+            $correction->update(['status' => 1, 'approved_at' => now()]);
+        });
+
+        return redirect()->route('attendance_correction.list')->with('success', '修正申請を承認しました。');
     }
 }

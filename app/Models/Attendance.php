@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Attendance extends Model
 {
@@ -14,28 +16,26 @@ class Attendance extends Model
         'date',
         'clock_in',
         'clock_out',
+        'comment',
     ];
 
-    /**
-     * リレーション：所属するユーザー (親)
+    /** @return BelongsTo<User, $this> The user who owns this attendance.
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * リレーション：紐づく複数の休憩ログ (子)
+    /** @return HasMany<BreakLog, $this> Break logs belonging to this attendance.
      */
-    public function breakLogs()
+    public function breakLogs(): HasMany
     {
         return $this->hasMany(BreakLog::class);
     }
 
-    /**
-     * リレーション：紐づく複数の修正申請 (子)
+    /** @return HasMany<AttendanceCorrection, $this> Correction requests for this attendance.
      */
-    public function attendanceCorrections()
+    public function attendanceCorrections(): HasMany
     {
         return $this->hasMany(AttendanceCorrection::class);
     }

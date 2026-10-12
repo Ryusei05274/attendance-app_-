@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -42,20 +44,36 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'is_admin' => 'boolean',
     ];
 
-      /**
-     * リレーション：ユーザーが持つ複数の勤怠データ
+    /** Read the persisted administrator flag through the view-facing alias.
+     * @return bool 判定結果。
      */
-    public function attendances()
+    public function getAdminStatusAttribute(): bool
+    {
+        return (bool) ($this->attributes['is_admin'] ?? false);
+    }
+
+    /** Persist the view-facing administrator alias to the existing schema column.
+     * @param mixed $value 処理に使用する値。
+     * @return void 戻り値なし。
+     */
+    public function setAdminStatusAttribute(mixed $value): void
+    {
+        $this->attributes['is_admin'] = (bool) $value;
+    }
+
+    /** @return HasMany<Attendance, $this> Attendance records owned by this user.
+     */
+    public function attendances(): HasMany
     {
         return $this->hasMany(Attendance::class);
     }
 
-    /**
-     * リレーション：ユーザーが持つ複数の修正申請データ
+    /** @return HasMany<AttendanceCorrection, $this> Correction requests submitted by this user.
      */
-    public function attendanceCorrections()
+    public function attendanceCorrections(): HasMany
     {
         return $this->hasMany(AttendanceCorrection::class);
     }

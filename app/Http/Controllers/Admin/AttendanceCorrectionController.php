@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\AttendanceCorrectionRequest;
+use App\Models\AttendanceCorrection;
 use App\Models\Attendance;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\View\View;
 
 class AttendanceCorrectionController extends Controller
 {
@@ -15,7 +17,11 @@ class AttendanceCorrectionController extends Controller
      * 💡 【US014 / PG12】管理者用：修正申請一覧画面の表示処理
      * 要件FN047・FN048に基づき、「承認待ち」と「承認済み」のタブ切り替えに対応します
      */
-    public function index(Request $request)
+    /** List correction requests by approval status with users and attendances eager loaded.
+     * @param Request $request 入力と認証情報を含むリクエスト。
+     * @return View 表示する画面とそのデータ。
+     */
+    public function index(Request $request): View
     {
         if (auth()->check()) {
             auth()->user()->admin_status = true; // 右上メニュー用ガード
@@ -27,7 +33,7 @@ class AttendanceCorrectionController extends Controller
         $statusLook = ($tab === 'approved') ? 1 : 0;
 
         // 全一般ユーザーから届いた対象ステータスの申請をまとめて取得（N+1回避）
-        $requests = AttendanceCorrectionRequest::with(['user', 'attendance'])
+        $requests = AttendanceCorrection::with(['user', 'attendance'])
             ->where('status', $statusLook)
             ->orderBy('created_at', 'desc')
             ->get();
@@ -43,14 +49,18 @@ class AttendanceCorrectionController extends Controller
      * 💡 【US015 / PG13】管理者用：修正申請承認画面の表示処理
      * 送られてきた申請内容を、以前提示していただいた「承認画面用Blade」に流し込みます
      */
-    public function showApprove($attendance_correct_request_id)
+    /** Show the selected correction request and its proposed values.
+     * @param int $attendance_correct_request_id 対象レコードの識別子。
+     * @return View 表示する画面とそのデータ。
+     */
+    public function showApprove(int $attendance_correct_request_id): View
     {
         if (auth()->check()) {
             auth()->user()->admin_status = true;
         }
 
         // 該当の申請データを取得
-        $application = AttendanceCorrectionRequest::with(['user', 'attendance'])->findOrFail($attendance_correct_request_id);
+        $application = AttendanceCorrection::with(['user', 'attendance'])->findOrFail($attendance_correct_request_id);
         $user = $application->user;
 
         // 💡 以前共有いただいたBladeが「$application->new_date」などのCarbonオブジェクトを求めているため
@@ -75,13 +85,18 @@ class AttendanceCorrectionController extends Controller
      * 💡 【US015 / FN051】👑 修正申請の承認・本番データ一斉反映ロジック
      * 管理者が「承認」ボタンを押した瞬間、1つのトランザクションで確実にDBを書き換えます
      */
-    public function approve(Request $request, $attendance_correct_request_id)
+    /** Approve a correction and atomically apply its attendance and break changes.
+     * @param Request $request 入力と認証情報を含むリクエスト。
+     * @param int $attendance_correct_request_id 対象レコードの識別子。
+     * @return RedirectResponse 処理後の遷移先。
+     */
+    public function approve(Request $request, int $attendance_correct_request_id): RedirectResponse
     {
         // データの不整合を防ぐためDBトランザクションを開始
         DB::transaction(function () use ($attendance_correct_request_id) {
             
             // 1. 申請データの取得
-            $correctionRequest = AttendanceCorrectionRequest::findOrFail($attendance_correct_request_id);
+            $correctionRequest = AttendanceCorrection::findOrFail($attendance_correct_request_id);
 
             // 2. 本番の勤怠メインレコード（attendancesテーブル）を申請内容で直接上書き更新
             $attendance = Attendance::findOrFail($correctionRequest->attendance_id);
@@ -111,7 +126,7 @@ class AttendanceCorrectionController extends Controller
         });
 
         // 完了後、申請一覧画面へリダイレクト
-        return redirect('/admin/attendance/correction-request/list')
+          return redirect()->route('attendance_correction.list')
                          ->with('success', '修正申請を承認し、本編データを更新しました。');
     }
 }

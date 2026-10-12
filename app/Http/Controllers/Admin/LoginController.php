@@ -4,22 +4,27 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
 
 class LoginController extends Controller
 {
     /**
      * PG07: 管理者ログイン画面の表示
+     * @return View 表示する画面とそのデータ。
      */
-    public function create()
+    public function create(): View
     {
         return view('admin.admin-login');
     }
 
     /**
      * FN014〜FN016: 管理者ログインの実行（正規の認証ロジック）
+     * @param Request $request 入力と認証情報を含むリクエスト。
+     * @return RedirectResponse 処理後の遷移先。
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         // 1. バリデーション
         $credentials = $request->validate([
@@ -27,7 +32,7 @@ class LoginController extends Controller
             'password' => 'required|string',
         ], [
             'email.required'    => 'メールアドレスを入力してください',
-            'email.email'       => 'メールアドレスは「ユーザー名@ドメイン」形式で入力してください',
+            'email.email'       => 'メールアドレスはメール形式で入力してください',
             'password.required' => 'パスワードを入力してください',
         ]);
 
@@ -49,8 +54,10 @@ class LoginController extends Controller
 
     /**
      * FN017: 管理者ログアウト処理
+     * @param Request $request 入力と認証情報を含むリクエスト。
+     * @return RedirectResponse 処理後の遷移先。
      */
-    public function destroy(Request $request)
+    public function destroy(Request $request): RedirectResponse
     {
         Auth::logout();
         $request->session()->invalidate();

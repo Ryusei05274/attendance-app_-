@@ -5,13 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class StaffController extends Controller
 {
     /**
      * 💡 【US041 / PG10】管理者用：スタッフ一覧画面の表示処理
      */
-    public function index()
+    /** List all general users for administrator review. */
+    public function index(): View
     {
         // 🔒 セキュリティ・ガード（メモリ上でadmin_statusを有効化してお手本メニューを表示）
         if (auth()->check()) {

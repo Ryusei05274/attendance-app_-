@@ -3,22 +3,28 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 class LoginController extends Controller
 {
     /**
      * PG02: 一般ログイン画面の表示
+     * @return View 表示する画面とそのデータ。
      */
-    public function create()
+    public function create(): View
     {
         return view('user.user-login'); // プロジェクトのViewファイル名に合わせてください
     }
 
     /**
      * FN006〜FN010: 一般ログインの実行 ＆ 指定文言エラー整備
+     * @param Request $request 入力と認証情報を含むリクエスト。
+     * @return RedirectResponse 処理後の遷移先。
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         // 評価項目である指定文言のエラーメッセージを完全再現します
         $request->validate([
@@ -26,7 +32,7 @@ class LoginController extends Controller
             'password' => 'required|string',
         ], [
             'email.required'    => 'メールアドレスを入力してください',
-            'email.email'       => 'メールアドレスは「ユーザー名@ドメイン」形式で入力してください',
+            'email.email'       => 'メールアドレスはメール形式で入力してください',
             'password.required' => 'パスワードを入力してください',
         ]);
 
@@ -37,6 +43,11 @@ class LoginController extends Controller
             // 管理者が一般ログインから入ってきた場合は管理者用トップへリダイレクト
             if (Auth::user()->role === 'admin') {
                 return redirect()->route('admin.attendance.list');
+            }
+
+            $user = Auth::user();
+            if ($user instanceof MustVerifyEmail && !$user->hasVerifiedEmail()) {
+                return redirect()->route('verification.notice');
             }
 
             // 一般ユーザーは打刻画面へ
@@ -51,8 +62,10 @@ class LoginController extends Controller
 
     /**
      * FN013: ログアウト処理
+     * @param Request $request 入力と認証情報を含むリクエスト。
+     * @return RedirectResponse 処理後の遷移先。
      */
-    public function destroy(Request $request)
+    public function destroy(Request $request): RedirectResponse
     {
         Auth::logout();
         $request->session()->invalidate();

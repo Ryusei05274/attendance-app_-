@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AttendanceCorrection extends Model
 {
@@ -15,6 +16,7 @@ class AttendanceCorrection extends Model
         'original_date',
         'new_clock_in',
         'new_clock_out',
+        'new_breaks',
         'comment',
         'status',
         'approved_at',
@@ -22,20 +24,19 @@ class AttendanceCorrection extends Model
 
     protected $casts = [
         'approved_at' => 'datetime',
+        'new_breaks' => 'array',
     ];
 
-    /**
-     * リレーション：所属するユーザー (親)
+    /** @return BelongsTo<User, $this> The user who submitted this request.
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * リレーション：所属する修正対象の勤怠データ (親)
+    /** @return BelongsTo<Attendance, $this> The attendance being corrected.
      */
-    public function attendance()
+    public function attendance(): BelongsTo
     {
         return $this->belongsTo(Attendance::class);
     }

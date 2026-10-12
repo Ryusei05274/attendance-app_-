@@ -25,17 +25,15 @@
     background: #fff;
     border: 1px solid #e1e1e1;
     border-radius: 10px;
-    height: auto !important;
-    overflow: hidden;
-    padding-bottom: 20px !important;
 }
 
 .form__group {
     display: grid;
     grid-template-columns: 30% 1fr;
     align-items: center;
-    height: auto !important;
-    padding: 1.5rem 0;
+    height: auto;
+    /* 各行の上下に余白を取り、入力欄が区切り線に詰まらないようにする（管理者詳細と統一） */
+    padding: 1rem 0;
 }
 
 .form__group:not(:first-of-type) {
@@ -217,75 +215,3 @@
 }
 
 /* ───────────────────────────────────────────────────────────────── */
-
-/* ───────────────────────────────────────────────────────────────── */
-/* 日付の入力枠調整（追記部分） */
-
-/* 修正フォーム側の調整 */
-.form__input.form__input--date {
-    width: auto;
-    /* 80pxの固定を解除して自動にする */
-    min-width: 200px;
-    /* 「〇年〇月〇日(曜日)」が綺麗に収まる最小幅 */
-    text-align: left;
-    /* 左詰めにすることで文字が美しく収まります */
-    padding-left: 0;
-    /* 左の余白を詰めて枠線との位置を調整 */
-}
-
-/* 承認待ち（閲覧のみ）側の調整 */
-.form__group .readonly {
-    width: auto;
-    min-width: 200px;
-    text-align: left;
-    padding-left: 0;
-}
-
-.form__group .form__input-group--date-box {
-    display: flex !important;
-    justify-content: flex-start !important;
-    gap: 2.5rem !important;
-    /* 「年」と「月日」の間の余白を微調整 */
-    padding: 0 !important;
-    width: auto !important;
-    min-width: auto !important;
-
-    /* 💡【重要】左側のマージンを「140px」に広げることで、中央寄せを解除して下の時間と開始位置を完璧に揃えます */
-    margin: 0 0 0 140px !important;
-}
-
-/* 日付テキスト共通設定 */
-.form__text-date {
-    font-size: 16px;
-    font-weight: bold;
-    color: #000;
-    text-align: center !important;
-    display: inline-block;
-}
-
-/* 「〇年」の文字枠の幅（出勤インプットと同じ幅にして位置を合わせます） */
-.form__text-date--year {
-    width: 80px !important;
-}
-
-/* 「〇月〇日」の文字枠の幅（退勤インプットと同じ幅にして位置を合わせます） */
-.form__text-date--md {
-    width: 80px !important;
-}
-
-/* 「〜」の文字（pタグ）を中央に固定し、左右に綺麗な余白を持たせる */
-.form__input-group p {
-    text-align: center !important;
-    width: 40px !important;
-    /* 「〜」のための専用の幅を確保 */
-    margin: 0 !important;
-    padding: 0 !important;
-    font-weight: bold;
-}
-
-/* 時間の入力ボックス（前後両方）の幅を綺麗に揃える */
-.form__input-group .form__input {
-    width: 80px !important;
-    /* お手本通りの綺麗な幅に固定 */
-    text-align: center !important;
-}

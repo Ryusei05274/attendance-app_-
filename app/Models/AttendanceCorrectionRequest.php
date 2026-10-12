@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AttendanceCorrectionRequest extends Model
 {
@@ -26,14 +27,16 @@ class AttendanceCorrectionRequest extends Model
         'approved_at',
     ];
 
-    // 🔗 誰からの申請か（Userモデルとのリレーション）
-    public function user()
+    /** @return BelongsTo<User, $this> The user who submitted this request.
+     */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    // 🔗 どの打刻データに対する申請か（Attendanceモデルとのリレーション）
-    public function attendance()
+    /** @return BelongsTo<Attendance, $this> The attendance being corrected.
+     */
+    public function attendance(): BelongsTo
     {
         return $this->belongsTo(Attendance::class, 'attendance_id');
     }
