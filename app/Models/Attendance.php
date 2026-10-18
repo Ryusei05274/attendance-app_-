@@ -19,24 +19,27 @@ class Attendance extends Model
         'comment',
     ];
 
-    /** @return BelongsTo<User, $this> The user who owns this attendance.
-     */
+    /** @return BelongsTo<User, $this> The user who owns this attendance. */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /** @return HasMany<BreakLog, $this> Break logs belonging to this attendance.
-     */
+    /** @return HasMany<BreakLog, $this> Break logs belonging to this attendance. */
     public function breakLogs(): HasMany
     {
-        return $this->hasMany(BreakLog::class);
+        return $this->hasMany(BreakLog::class, 'attendance_id');
     }
 
-    /** @return HasMany<AttendanceCorrection, $this> Correction requests for this attendance.
-     */
+    /** @return HasMany<BreakLog, $this> Breaks associated with this attendance. */
+    public function breaks(): HasMany
+    {
+        return $this->hasMany(BreakLog::class, 'attendance_id');
+    }
+
+    /** @return HasMany<AttendanceCorrection, $this> Correction requests for this attendance. */
     public function attendanceCorrections(): HasMany
     {
-        return $this->hasMany(AttendanceCorrection::class);
+        return $this->hasMany(AttendanceCorrection::class, 'attendance_id');
     }
 }

@@ -71,6 +71,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Attendance::class);
     }
 
+    /**
+     * Get API attendance records owned by this user.
+     *
+     * @return HasMany<AttendanceRecord, $this>
+     */
+    public function attendanceRecords(): HasMany
+    {
+        return $this->hasMany(AttendanceRecord::class, 'user_id');
+    }
+
     /** @return HasMany<AttendanceCorrection, $this> Correction requests submitted by this user.
      */
     public function attendanceCorrections(): HasMany

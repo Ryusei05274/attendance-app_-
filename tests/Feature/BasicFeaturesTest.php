@@ -32,10 +32,12 @@ class BasicFeaturesTest extends TestCase
         $this->post('/register', [])->assertSessionHasErrors(['name', 'email', 'password', 'password_confirmation']);
         $this->post('/register', ['name' => 'A', 'email' => 'a@example.test', 'password' => 'short', 'password_confirmation' => 'short'])->assertSessionHasErrors(['password']);
         $this->post('/register', ['name' => 'A', 'email' => 'a@example.test', 'password' => 'password123', 'password_confirmation' => 'different'])->assertSessionHasErrors(['password_confirmation']);
-        $this->post('/register', ['name' => 'A', 'email' => 'a@example.test', 'password' => 'password123', 'password_confirmation' => 'password123'])->assertRedirect(route('verification.notice'));
+        $registrationResponse = $this->post('/register', ['name' => 'A', 'email' => 'a@example.test', 'password' => 'password123', 'password_confirmation' => 'password123']);
+        $registrationResponse
+            ->assertRedirect(route('verification.notice'))
+            ->assertSessionHas('verification.pending_user_id');
         $this->assertDatabaseHas('users', ['name' => 'A', 'email' => 'a@example.test', 'role' => 'user', 'email_verified_at' => null]);
         $this->assertGuest();
-        $this->assertSessionHas('verification.pending_user_id');
     }
 
     public function test_user_login_validates_and_authenticates(): void

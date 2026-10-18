@@ -1,0 +1,268 @@
+{
+  "info": {
+    "name": "Attendance API v1",
+    "description": "勤怠API v1 の5操作を確認するコレクションです。書き込みにはSanctumトークンが必要で、登録する勤怠はトークンの認証ユーザーに紐づきます。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "attendance_record_id",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. 勤怠一覧取得 (GET)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/attendance-records?per_page=20&page=1",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "attendance-records"
+          ],
+          "query": [
+            {
+              "key": "per_page",
+              "value": "20"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('data と meta がある', function () { const body = pm.response.json(); pm.expect(body).to.have.property('data'); pm.expect(body).to.have.property('meta'); pm.expect(body.meta).to.have.all.keys('current_page', 'last_page', 'per_page', 'total'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. 勤怠詳細取得 (GET)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/attendance-records/{{attendance_record_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "attendance-records",
+            "{{attendance_record_id}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('勤怠と関連情報がある', function () { const row = pm.response.json().data; pm.expect(row).to.have.property('user'); pm.expect(row).to.have.property('breaks'); pm.expect(row).to.have.property('correction_requests'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. 勤怠登録 (POST)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"date\": \"2026-10-31\",\n  \"clock_in\": \"09:00:00\",\n  \"clock_out\": \"18:00:00\",\n  \"comment\": \"Postman確認\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/attendance-records",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "attendance-records"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "if (body.data && body.data.id) pm.collectionVariables.set('attendance_record_id', body.data.id);",
+              "pm.test('作成IDを保存', function () { pm.expect(body.data.id).to.exist; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. 勤怠更新 (PUT / PATCH)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"comment\": \"Postmanで更新\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/attendance-records/{{attendance_record_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "attendance-records",
+            "{{attendance_record_id}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('備考が更新された', function () { pm.expect(pm.response.json().data.comment).to.eql('Postmanで更新'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. 勤怠削除 (DELETE)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/attendance-records/{{attendance_record_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "attendance-records",
+            "{{attendance_record_id}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
